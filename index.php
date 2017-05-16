@@ -1,3 +1,23 @@
+<?php
+  $conn = mysqli_connect( "localhost", "username", "password", "database" );
+
+  if( isset( $_GET[ "id" ] ) and intval( $_GET[ "id" ] ) != 0 ){
+    $ownerid = intval( $_GET[ "id" ] );
+    if( $conn->query( "SELECT `id` FROM `timetables` WHERE `id`='$ownerid';" )->num_rows == 0 ){
+      $ownerid = 1;
+    }
+  }else{
+    $ownerid = 1;
+  }
+  
+  $users = $conn->query( "SELECT `uid`, `uname` FROM `users` WHERE 1;" );
+  $usersList = array();  
+  while( $user = $users->fetch_assoc() ){
+
+    $userList[ $user["uname"] ] = $user["uid"];
+    
+  }
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -44,8 +64,24 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="#">Timetable</a>
+                <a class="navbar-brand" href="/">Timetable</a>
             </div>
+            <div class="collapse navbar-collapse pull-right" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                  <li class='dropdown'>
+                    <a href='#' class='dropdown-toggle' data-toggle='dropdown'>Users <b class='caret'></b></a>
+                    <ul class='dropdown-menu'>
+                    <?php
+                      foreach( $userList as $uname=>$id ){
+                        echo    "<li>";
+                          echo   "<a href='index.php?id=$id'>$uname</a>";
+                        echo    "</li>";
+                      }
+                    ?>
+                    </ul>
+                  </li>
+                </ul>
+            </div>          
         </div>
         <!-- /.container -->
     </nav>
@@ -55,50 +91,42 @@
 
         <div class="row">
             <div class="col-lg-12 text-center">
-		<?php
-		  $conn = mysqli_connect( "localhost", "username", "password", "database" );
-		  $querydata = $conn->query("SELECT `timetable`, `times` FROM `users` WHERE 1;");
-
-		  $placeholder = 0;
-		  while( $data = $querydata->fetch_assoc() ){
-
-		    $timetable = json_decode( $data["timetable"], true );
-		    $times = json_decode( $data["times"], true );
-
-		    $weekCount = 0;
-		    foreach( $timetable as $week ){
-		      
-		      $weekCount += 1;
-		      
-		      echo "<b>Week $weekCount</b>";
-		      echo "<center><table class='table table-hover'>";
-			echo "<tr>";
-			  foreach( $times[ $weekCount-1 ][ 0 ] as $time ){
-			    echo "<th>" . $time[0] . "-" . $time[1] . "</th>";
-			  }
-			echo "</tr>";
-		
-			foreach( $week as $day ){
-			  echo "<tr>";
-			  foreach( $day as $lesson ){
-			    echo "<td>";
-			    	echo $lesson["lesson"];
-			      if( isset( $lesson["teacher"] ) ){
-				echo " - " . $lesson["teacher"];
-			      }
-			      if( isset( $lesson["location"] ) ){
-				echo " - " . $lesson["location"];
-			      }
-			    echo "</td>";
-			  }
-			  echo "</tr>";
-			  
-			}
-		      echo "</table></center>";
-		      
-		    }
-		}
-		?>
+              <?php
+                $querydata = $conn->query("SELECT `timetable`, `times`, `name`, `owner` FROM `timetables` WHERE `owner`='$ownerid' ORDER BY `id` ASC;");
+                while( $data = $querydata->fetch_assoc() ){
+                  $timetable = json_decode( $data["timetable"], true );
+                  $times = json_decode( $data["times"], true );
+                  echo "<h2>" . $data["name"] . "</h2>";
+                  echo "<h4>(" . array_keys( $userList, $data[ "owner" ] )[0] . ")</h4>";
+                  echo "<center><table class='table table-hover'>";
+                  echo "<tr>";
+                    echo "<th>Day</th>";
+                  foreach( $times as $time ){
+                    echo "<th class='text-center'>" . $time[0] . " - " . $time[1] . "</th>";
+                  }
+                  echo "</tr>";
+                  $dayNum = 0;
+                  foreach( $timetable as $day ){
+                    echo "<tr>";
+                    echo "<td><b>" . jddayofweek( $dayNum, 2 ) . "</b></td>";
+                    $dayNum++;
+                    foreach( $day as $lesson ){
+                      echo "<td class='text-center'>";
+                        echo $lesson["lesson"];
+                        if( isset( $lesson["teacher"] ) ){
+                          echo " - " . $lesson["teacher"];
+                        }
+                        if( isset( $lesson["location"] ) ){
+                          echo " - " . $lesson["location"];
+                        }
+                      echo "</td>";
+                    }
+                    echo "</tr>";
+                    
+                  }
+                  echo "</table></center>";
+                }
+              ?>
             </div>
         </div>
         <!-- /.row -->
